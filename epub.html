@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Folio — HTML Folder to Text PDF</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --color-bg: #11161d;
+        --color-surface: #171e27;
+        --color-surface-alt: #1e2732;
+        --color-border: rgba(201, 162, 39, 0.16);
+        --color-border-strong: rgba(201, 162, 39, 0.4);
+        --color-text: #e9e5d8;
+        --color-text-dim: #93a0ac;
+        --color-accent: #c9a227;
+        --color-accent-soft: rgba(201, 162, 39, 0.1);
+        --font-display: "Spectral", Georgia, serif;
+        --font-body: "Inter", system-ui, -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", "Courier New", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(
+            circle at 15% 0%,
+            rgba(201, 162, 39, 0.05),
+            transparent 45%
+          ),
+          var(--color-bg);
+        font-family: var(--font-body);
+        color: var(--color-text);
+        display: flex;
+        justify-content: center;
+        padding: 56px 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 660px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-top: 2px solid var(--color-accent);
+        border-radius: 4px;
+        padding: 44px 44px 40px;
+      }
+
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--color-accent);
+        margin-bottom: 10px;
+      }
+
+      h1 {
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 0 0 12px;
+        color: #f4f1e6;
+      }
+
+      .lede {
+        font-size: 14.5px;
+        line-height: 1.65;
+        color: var(--color-text-dim);
+        margin: 0 0 36px;
+        max-width: 52ch;
+      }
+
+      .step {
+        display: flex;
+        gap: 18px;
+        padding: 22px 0;
+        border-top: 1px solid var(--color-border);
+      }
+
+      .step:first-of-type {
+        border-top: none;
+        padding-top: 0;
+      }
+
+      .step-num {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--color-accent);
+        padding-top: 3px;
+        flex-shrink: 0;
+        width: 24px;
+      }
+
+      .step-body {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .step-title {
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--color-text);
+        margin: 0 0 4px;
+      }
+
+      .step-desc {
+        font-size: 13px;
+        color: var(--color-text-dim);
+        margin: 0 0 14px;
+        line-height: 1.55;
+      }
+
+      /* Custom file input */
+      .file-drop {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px dashed var(--color-border-strong);
+        border-radius: 4px;
+        padding: 14px 16px;
+        background: var(--color-surface-alt);
+        cursor: pointer;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+        position: relative;
+      }
+
+      .file-drop:hover {
+        border-color: var(--color-accent);
+        background: var(--color-accent-soft);
+      }
+
+      .file-drop input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .file-drop-icon {
+        font-family: var(--font-mono);
+        color: var(--color-accent);
+        font-size: 14px;
+      }
+
+      .file-drop-text {
+        font-size: 13px;
+        color: var(--color-text-dim);
+      }
+
+      .file-drop-text b {
+        color: var(--color-text);
+        font-weight: 500;
+      }
+
+      #fileList {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--color-text-dim);
+        max-height: 130px;
+        overflow-y: auto;
+        margin-top: 12px;
+        line-height: 1.8;
+        padding-left: 2px;
+      }
+
+      #fileList::-webkit-scrollbar {
+        width: 6px;
+      }
+      #fileList::-webkit-scrollbar-thumb {
+        background: var(--color-border-strong);
+        border-radius: 3px;
+      }
+
+      #status {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        color: var(--color-text-dim);
+        min-height: 18px;
+        margin-top: 4px;
+      }
+
+      #status.active {
+        color: var(--color-accent);
+      }
+
+      #progressWrap {
+        display: none;
+        background: var(--color-surface-alt);
+        border-radius: 4px;
+        height: 4px;
+        margin-top: 12px;
+        overflow: hidden;
+      }
+
+      #progressBar {
+        background: var(--color-accent);
+        height: 100%;
+        width: 0%;
+        transition: width 0.25s ease;
+      }
+
+      button#convertBtn {
+        margin-top: 24px;
+        width: 100%;
+        padding: 13px 20px;
+        background: var(--color-accent);
+        color: #171006;
+        border: none;
+        border-radius: 4px;
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        display: none;
+        transition:
+          background 0.15s ease,
+          transform 0.1s ease;
+      }
+
+      button#convertBtn:hover:not(:disabled) {
+        background: #ddb536;
+      }
+      button#convertBtn:active:not(:disabled) {
+        transform: scale(0.99);
+      }
+      button#convertBtn:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .footer-note {
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid var(--color-border);
+        font-size: 12px;
+        color: var(--color-text-dim);
+        line-height: 1.6;
+      }
+
+      .footer-note code {
+        font-family: var(--font-mono);
+        background: var(--color-surface-alt);
+        padding: 1px 5px;
+        border-radius: 3px;
+        color: var(--color-accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="eyebrow">Folio — Ebook Toolkit</div>
+      <h1>HTML Folder → Text PDF</h1>
+      <p class="lede">
+        Extracts real, selectable text straight from your HTML chapter files and
+        lays it out as an actual text-based PDF — no screenshots, no
+        rasterizing. The result stays small and stays sharp at any zoom level.
+        Headings, bold, and italics are preserved; exact pixel alignment is not
+        the goal here.
+      </p>
+
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <p class="step-title">Select your chapter folder</p>
+          <p class="step-desc">
+            Choose the folder containing your <code>.html</code> /
+            <code>.xhtml</code> files. They're read in natural sort order
+            (chapter_01, chapter_02...).
+          </p>
+          <label class="file-drop">
+            <span class="file-drop-icon">▤</span>
+            <span class="file-drop-text"
+              ><b>Choose folder</b> — or drop it here</span
+            >
+            <input
+              type="file"
+              id="folderInput"
+              webkitdirectory
+              directory
+              multiple
+            />
+          </label>
+          <div id="fileList"></div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <p class="step-title">Build the PDF</p>
+          <p class="step-desc">
+            Each file becomes a new chapter, starting on a fresh page, in the
+            order shown above.
+          </p>
+          <div id="status"></div>
+          <div id="progressWrap"><div id="progressBar"></div></div>
+          <button id="convertBtn">Extract Text &amp; Build PDF</button>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        Runs entirely in your browser — nothing is uploaded anywhere. Built with
+        <code>jsPDF</code>.
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+      let htmlFiles = [];
+
+      const folderInput = document.getElementById("folderInput");
+      const fileListEl = document.getElementById("fileList");
+      const statusEl = document.getElementById("status");
+      const convertBtn = document.getElementById("convertBtn");
+      const progressWrap = document.getElementById("progressWrap");
+      const progressBar = document.getElementById("progressBar");
+
+      function setStatus(msg, active = false) {
+        statusEl.textContent = msg;
+        statusEl.classList.toggle("active", active);
+      }
+      function setProgress(pct) {
+        progressWrap.style.display = "block";
+        progressBar.style.width = pct + "%";
+      }
+
+      function naturalCompare(a, b) {
+        return a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      }
+
+      folderInput.addEventListener("change", (e) => {
+        const files = Array.from(e.target.files).filter(
+          (f) => /\.html?$/i.test(f.name) || /\.xhtml$/i.test(f.name),
+        );
+        files.sort(naturalCompare);
+        htmlFiles = files;
+
+        if (htmlFiles.length === 0) {
+          setStatus("No .html / .xhtml files found in that folder.");
+          convertBtn.style.display = "none";
+          fileListEl.innerHTML = "";
+          return;
+        }
+
+        fileListEl.innerHTML = htmlFiles
+          .map((f, i) => `${String(i + 1).padStart(2, "0")}  ${f.name}`)
+          .join("<br>");
+        setStatus(`${htmlFiles.length} files found, ready in this order.`);
+        convertBtn.style.display = "inline-block";
+      });
+
+      // Tag -> style mapping (font size, bold, italic, spacing before/after)
+      const TAG_STYLES = {
+        H1: { size: 20, bold: true, italic: false, before: 6, after: 4 },
+        H2: { size: 17, bold: true, italic: false, before: 5, after: 4 },
+        H3: { size: 15, bold: true, italic: false, before: 4, after: 3 },
+        H4: { size: 13, bold: true, italic: false, before: 3, after: 3 },
+        H5: { size: 12, bold: true, italic: false, before: 3, after: 2 },
+        H6: { size: 11, bold: true, italic: false, before: 3, after: 2 },
+        BLOCKQUOTE: {
+          size: 11,
+          bold: false,
+          italic: true,
+          before: 3,
+          after: 3,
+        },
+        LI: { size: 11, bold: false, italic: false, before: 1, after: 1 },
+        P: { size: 11, bold: false, italic: false, before: 2, after: 2 },
+        DEFAULT: { size: 11, bold: false, italic: false, before: 2, after: 2 },
+      };
+
+      // Walks the DOM and produces a flat list of block objects: { text, style }
+      function extractBlocks(rootEl) {
+        const blocks = [];
+
+        function isBlockTag(tag) {
+          return [
+            "P",
+            "DIV",
+            "H1",
+            "H2",
+            "H3",
+            "H4",
+            "H5",
+            "H6",
+            "LI",
+            "BLOCKQUOTE",
+            "BR",
+          ].includes(tag);
+        }
+
+        function inlineHasEmphasis(el) {
+          const bold = !!el.querySelector("b, strong");
+          const italic = !!el.querySelector("i, em");
+          return { bold, italic };
+        }
+
+        function walk(node) {
+          if (node.nodeType === Node.TEXT_NODE) return;
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+          const tag = node.tagName;
+          if (tag === "SCRIPT" || tag === "STYLE") return;
+
+          if (tag === "BR") {
+            blocks.push({ text: "", style: TAG_STYLES.DEFAULT });
+            return;
+          }
+
+          if (isBlockTag(tag)) {
+            const text = node.textContent.replace(/\s+/g, " ").trim();
+            if (text.length > 0) {
+              const emphasis = inlineHasEmphasis(node);
+              const baseStyle = TAG_STYLES[tag] || TAG_STYLES.DEFAULT;
+              blocks.push({
+                text,
+                style: {
+                  size: baseStyle.size,
+                  bold: baseStyle.bold || emphasis.bold,
+                  italic: baseStyle.italic || emphasis.italic,
+                  before: baseStyle.before,
+                  after: baseStyle.after,
+                },
+              });
+            }
+            return;
+          }
+
+          for (const child of node.childNodes) {
+            walk(child);
+          }
+        }
+
+        walk(rootEl);
+        return blocks;
+      }
+
+      async function buildPdfFromFiles(files, onProgress) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+        });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const marginX = 18;
+        const marginTop = 18;
+        const marginBottom = 18;
+        const maxWidth = pageWidth - marginX * 2;
+
+        let y = marginTop;
+        let firstBlockEver = true;
+
+        for (let f = 0; f < files.length; f++) {
+          const file = files[f];
+          const rawHtml = await file.text();
+          const parser = new DOMParser();
+          const parsed = parser.parseFromString(rawHtml, "text/html");
+          const root = parsed.body || parsed.documentElement;
+
+          const blocks = extractBlocks(root);
+
+          if (!firstBlockEver) {
+            doc.addPage();
+            y = marginTop;
+          }
+
+          for (const block of blocks) {
+            if (block.text === "") {
+              y += 4;
+              continue;
+            }
+
+            const style =
+              block.style.bold && block.style.italic
+                ? "bolditalic"
+                : block.style.bold
+                  ? "bold"
+                  : block.style.italic
+                    ? "italic"
+                    : "normal";
+
+            doc.setFont("times", style);
+            doc.setFontSize(block.style.size);
+
+            y += block.style.before * 0.5;
+
+            const lines = doc.splitTextToSize(block.text, maxWidth);
+            const lineHeight = block.style.size * 0.42;
+
+            for (const line of lines) {
+              if (y + lineHeight > pageHeight - marginBottom) {
+                doc.addPage();
+                y = marginTop;
+              }
+              doc.text(line, marginX, y);
+              y += lineHeight;
+            }
+
+            y += block.style.after * 0.5;
+            firstBlockEver = false;
+          }
+
+          if (onProgress) onProgress(f + 1, files.length);
+        }
+
+        return doc;
+      }
+
+      convertBtn.addEventListener("click", async () => {
+        convertBtn.disabled = true;
+        setStatus("Extracting text and building the PDF…", true);
+        setProgress(5);
+
+        try {
+          const doc = await buildPdfFromFiles(htmlFiles, (cur, total) => {
+            setStatus(
+              `Processing (${cur}/${total}): ${htmlFiles[cur - 1].name}`,
+              true,
+            );
+            setProgress(5 + Math.round((cur / total) * 90));
+          });
+
+          setProgress(98);
+          doc.save("merged_book_textpdf.pdf");
+
+          setProgress(100);
+          setStatus("Done — merged_book_textpdf.pdf has been downloaded.");
+        } catch (err) {
+          setStatus("Error: " + err.message);
+        } finally {
+          convertBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
